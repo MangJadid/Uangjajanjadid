@@ -825,8 +825,10 @@ body.role-sekretariat .super-only{display:inline-block!important;}
       <!-- Asrama (untuk sekretaris) -->
       <div id="pg-wrap-asrama" class="fg" style="margin-bottom:16px;display:none">
         <label>Asrama yang Dapat Diakses</label>
-        <select id="pg-asrama" multiple style="height:120px"></select>
-        <small style="font-size:11px;color:var(--text-l);margin-top:3px">Sekretaris hanya bisa akses data santri dari asrama yang dipilih. Tahan Ctrl/Cmd untuk pilih lebih dari satu.</small>
+        <div id="pg-asrama-checks" style="border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;max-height:180px;overflow-y:auto;background:var(--white)"></div>
+        <!-- hidden select untuk kompatibilitas kode lama -->
+        <select id="pg-asrama" multiple style="display:none"></select>
+        <small style="font-size:11px;color:var(--text-l);margin-top:3px">Centang asrama yang dapat diakses sekretariat ini.</small>
       </div>
       <div style="display:flex;gap:9px;justify-content:flex-end">
         <button class="btn btn-o" onclick="closeMo('mo-pengurus')">Batal</button>
@@ -2860,10 +2862,12 @@ function editPengurus(id){
   const ids=JSON.parse(p.kobong_ids||'[]');
   const sel=document.getElementById('pg-kobong');
   [...sel.options].forEach(o=>{ o.selected=ids.includes(parseInt(o.value)); });
-  // Set seleksi asrama
+  // Set seleksi asrama via checkbox
   const asramaIds=JSON.parse(p.asrama_ids||'[]').map(String);
-  const selA=document.getElementById('pg-asrama');
-  [...selA.options].forEach(o=>{ o.selected=asramaIds.includes(String(o.value)); });
+  const checksDiv=document.getElementById('pg-asrama-checks');
+  checksDiv.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    cb.checked = asramaIds.includes(String(cb.value));
+  });
   openMo('mo-pengurus');
 }
 
@@ -2892,13 +2896,17 @@ function populatePengurusModal(){
     group.list.forEach(k=>{ sel.innerHTML+=`<option value="${k.id}">${k.nama}</option>`; });
     sel.innerHTML+=`</optgroup>`;
   });
-  // Populate asrama options — simpan seleksi yang ada dulu
-  const selA=document.getElementById('pg-asrama');
-  const selectedBefore=[...selA.selectedOptions].map(o=>o.value);
-  selA.innerHTML='';
-  ALL_ASRAMA.forEach(a=>{ selA.innerHTML+=`<option value="${a.id}">🏛️ ${a.nama}</option>`; });
-  // Kembalikan seleksi asrama yang sudah dipilih
-  [...selA.options].forEach(o=>{ if(selectedBefore.includes(o.value)) o.selected=true; });
+  // Populate asrama sebagai checkbox
+  const checksDiv = document.getElementById('pg-asrama-checks');
+  const selectedBefore = [...checksDiv.querySelectorAll('input[type=checkbox]:checked')].map(c=>c.value);
+  checksDiv.innerHTML='';
+  ALL_ASRAMA.forEach(a=>{
+    const checked = selectedBefore.includes(String(a.id));
+    const lbl = document.createElement('label');
+    lbl.style.cssText='display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:4px 0';
+    lbl.innerHTML=`<input type="checkbox" value="${a.id}" ${checked?'checked':''} style="width:16px;height:16px;accent-color:var(--green);cursor:pointer"> 🏛️ ${a.nama}`;
+    checksDiv.appendChild(lbl);
+  });
   onPengurusRoleChange();
 }
 
@@ -2911,8 +2919,8 @@ async function simpanPengurus(){
 
   const sel=document.getElementById('pg-kobong');
   const kobong_ids=JSON.stringify([...sel.selectedOptions].map(o=>parseInt(o.value)));
-  const selA=document.getElementById('pg-asrama');
-  const asrama_ids=JSON.stringify([...selA.selectedOptions].map(o=>parseInt(o.value)));
+  const checksDiv2=document.getElementById('pg-asrama-checks');
+  const asrama_ids=JSON.stringify([...checksDiv2.querySelectorAll('input[type=checkbox]:checked')].map(c=>parseInt(c.value)));
 
   if(!nama||!username){ toast('Nama dan username wajib!',false); return; }
 
